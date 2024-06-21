@@ -23,9 +23,9 @@ class FluteConfig(QuantizationConfig):
         num_bits: int = 4,
         group_size: int = 128,
     ) -> None:
-        if self.num_bits not in [2, 3, 4]:
+        if num_bits not in [2, 3, 4]:
             raise ValueError
-        if self.num_bits == 3:
+        if num_bits == 3:
             raise NotImplementedError
 
         self.num_bits = num_bits
