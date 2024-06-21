@@ -143,10 +143,13 @@ class FluteLinearMethod(LinearMethodBase):
             },
         )
 
-        tables = torch.arange(
-            2 ** self.quant_config.num_bits,
-            dtype=params_dtype,
-            device=device,
+        tables = Parameter(
+            torch.arange(
+                2 ** self.quant_config.num_bits,
+                dtype=params_dtype,
+                device=device,
+            ),
+            requires_grad=False,
         )
         set_weight_attrs(
             tables,
@@ -156,7 +159,10 @@ class FluteLinearMethod(LinearMethodBase):
             },
         )
 
-        tables2 = flute.utils.make_qmap2_from_qmap(tables)
+        tables2 = Parameter(
+            flute.utils.make_qmap2_from_qmap(tables),
+            requires_grad=False,
+        )
         set_weight_attrs(
             tables2,
             {
