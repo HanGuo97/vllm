@@ -20,8 +20,8 @@ class FluteConfig(QuantizationConfig):
 
     def __init__(
         self,
-        num_bits: int = 4,
-        group_size: int = 128,
+        num_bits: int,
+        group_size: int,
     ) -> None:
         if num_bits not in [2, 3, 4]:
             raise ValueError
@@ -33,20 +33,18 @@ class FluteConfig(QuantizationConfig):
         self.pack_factor = int(16 / self.num_bits)
 
     def __repr__(self) -> str:
-        return (
-            f"FluteConfig(num_bits={self.num_bits}, group_size={self.group_size})"
-        )
+        return f"FluteConfig(num_bits={self.num_bits}, group_size={self.group_size})"
 
     @classmethod
-    def get_name(self) -> str:
+    def get_name(cls) -> str:
         return "flute"
 
     @classmethod
-    def get_supported_act_dtypes(self) -> List[torch.dtype]:
+    def get_supported_act_dtypes(cls) -> List[torch.dtype]:
         return [torch.float16]
 
     @classmethod
-    def get_min_capability(self) -> int:
+    def get_min_capability(cls) -> int:
         return 80
 
     @classmethod
@@ -57,11 +55,12 @@ class FluteConfig(QuantizationConfig):
     def from_config(cls, config: Dict[str, Any]) -> "FluteConfig":
         num_bits = cls.get_from_keys(config, ["num_bits"])
         group_size = cls.get_from_keys(config, ["group_size"])
-        return cls(num_bits, group_size)
+        return cls(num_bits=num_bits, group_size=group_size)
 
     def get_quant_method(
-            self,
-            layer: torch.nn.Module) -> Optional["FluteLinearMethod"]:
+        self,
+        layer: torch.nn.Module,
+    ) -> Optional["FluteLinearMethod"]:
         if isinstance(layer, LinearBase):
             return FluteLinearMethod(self)
         return None
@@ -74,10 +73,10 @@ class FluteLinearMethod(LinearMethodBase):
     """Linear method for Flute.
 
     Args:
-       quant_config: The Flute quantization config.
+        quant_config: The Flute quantization config.
     """
 
-    def __init__(self, quant_config: FluteConfig):
+    def __init__(self, quant_config: FluteConfig) -> None:
         self.quant_config = quant_config
 
     def create_weights(
@@ -97,17 +96,16 @@ class FluteLinearMethod(LinearMethodBase):
         if output_size != sum(output_partition_sizes):
             raise NotImplementedError
 
-        if params_dtype != torch.float16:
+        if params_dtype not in [torch.float16]:
             raise TypeError
         # if extra_weight_attrs:
         #     raise ValueError
 
-        # Quantized weights packed into Int16.
         K = input_size_per_partition
         N = sum(output_partition_sizes)
         P = int(N / 16 * self.quant_config.num_bits)
         G = int(K / self.quant_config.group_size)
-        device = torch.device("cuda")
+        device = "cuda"
 
         weight = Parameter(
             torch.empty(
@@ -131,8 +129,8 @@ class FluteLinearMethod(LinearMethodBase):
         scales = Parameter(
             torch.empty(
                 (N, G),
-                device=device,
                 dtype=params_dtype,
+                device=device,
             ),
             requires_grad=False,
         )
