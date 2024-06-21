@@ -20,8 +20,8 @@ class FluteConfig(QuantizationConfig):
 
     def __init__(
         self,
-        num_bits: int,
-        group_size: int,
+        num_bits: int = 4,
+        group_size: int = 128,
     ) -> None:
         if self.num_bits not in [2, 3, 4]:
             raise ValueError
@@ -49,13 +49,15 @@ class FluteConfig(QuantizationConfig):
     def get_min_capability(self) -> int:
         return 80
 
-    @staticmethod
-    def get_config_filenames() -> List[str]:
-        return []
+    @classmethod
+    def get_config_filenames(cls) -> List[str]:
+        return ["flute_config.json"]
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "FluteConfig":
-        raise NotImplementedError
+        num_bits = cls.get_from_keys(config, ["num_bits"])
+        group_size = cls.get_from_keys(config, ["group_size"])
+        return cls(num_bits, group_size)
 
     def get_quant_method(
             self,
