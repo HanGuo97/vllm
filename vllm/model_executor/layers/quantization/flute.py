@@ -165,20 +165,11 @@ class FluteLinearMethod(LinearMethodBase):
             },
         )
 
-        workspace = flute.integrations._WORKSPACE
-        set_weight_attrs(
-            workspace,
-            {
-                "input_dim": None,
-                "output_dim": None,
-            },
-        )
-
-        layer.register_buffer("weight", weight)
-        layer.register_buffer("scales", scales)
-        layer.register_buffer("tables", tables)
-        layer.register_buffer("tables2", tables2)
-        layer.register_buffer("workspace", workspace)
+        layer.register_parameter("weight", weight)
+        layer.register_parameter("scales", scales)
+        layer.register_parameter("tables", tables)
+        layer.register_parameter("tables2", tables2)
+        layer.workspace = flute.integrations._WORKSPACE
 
     def apply(
         self,
