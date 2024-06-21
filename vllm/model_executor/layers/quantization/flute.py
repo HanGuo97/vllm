@@ -11,7 +11,6 @@ from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig)
 
 import flute
-import flute.utils
 import flute.integrations
 
 
@@ -30,7 +29,7 @@ class FluteConfig(QuantizationConfig):
 
         self.num_bits = num_bits
         self.group_size = group_size
-        self.pack_factor = int(16 / self.num_bits)
+        self.pack_factor = int(16 / num_bits)
 
     def __repr__(self) -> str:
         return f"FluteConfig(num_bits={self.num_bits}, group_size={self.group_size})"
