@@ -99,6 +99,8 @@ class FluteLinearMethod(LinearMethodBase):
 
         if params_dtype != torch.float16:
             raise TypeError
+        if extra_weight_attrs:
+            raise ValueError
 
         # Quantized weights packed into Int16.
         K = input_size_per_partition
@@ -154,6 +156,7 @@ class FluteLinearMethod(LinearMethodBase):
         set_weight_attrs(
             tables,
             {
+                **extra_weight_attrs,
                 "input_dim": None,
                 "output_dim": None,
             },
@@ -166,6 +169,7 @@ class FluteLinearMethod(LinearMethodBase):
         set_weight_attrs(
             tables2,
             {
+                **extra_weight_attrs,
                 "input_dim": None,
                 "output_dim": None,
             },
