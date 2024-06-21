@@ -175,11 +175,14 @@ class FluteLinearMethod(LinearMethodBase):
             },
         )
 
+        layer.num_bits = self.quant_config.num_bits
+        layer.group_size = self.quant_config.group_size
+        layer.workspace = flute.integrations._WORKSPACE
+
         layer.register_parameter("weight", weight)
         layer.register_parameter("scales", scales)
         layer.register_parameter("tables", tables)
         layer.register_parameter("tables2", tables2)
-        layer.workspace = flute.integrations._WORKSPACE
 
     def apply(
         self,
