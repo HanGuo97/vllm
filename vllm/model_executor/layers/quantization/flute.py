@@ -97,8 +97,6 @@ class FluteLinearMethod(LinearMethodBase):
 
         if params_dtype not in [torch.float16]:
             raise TypeError
-        # if extra_weight_attrs:
-        #     raise ValueError
 
         K = input_size_per_partition
         N = sum(output_partition_sizes)
@@ -156,6 +154,7 @@ class FluteLinearMethod(LinearMethodBase):
                 **extra_weight_attrs,
                 "input_dim": None,
                 "output_dim": None,
+                "ignore_warning": True,
             },
         )
 
@@ -169,6 +168,7 @@ class FluteLinearMethod(LinearMethodBase):
                 **extra_weight_attrs,
                 "input_dim": None,
                 "output_dim": None,
+                "ignore_warning": True,
             },
         )
 
