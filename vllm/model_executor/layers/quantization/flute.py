@@ -52,6 +52,12 @@ class FluteConfig(QuantizationConfig):
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "FluteConfig":
+        num_sms = cls.get_from_keys(config, ["num_sms"])
+        if num_sms != flute.NUM_SMS:
+            raise ValueError(
+                f"SMs mismatch: the model was quantized with "
+                f"{num_sms}, but running with {flute.NUM_SMS} SMs.")
+
         num_bits = cls.get_from_keys(config, ["num_bits"])
         group_size = cls.get_from_keys(config, ["group_size"])
         return cls(num_bits=num_bits, group_size=group_size)
@@ -180,6 +186,19 @@ class FluteLinearMethod(LinearMethodBase):
         layer.register_parameter("scales", scales)
         layer.register_parameter("tables", tables)
         layer.register_parameter("tables2", tables2)
+
+        layer.needs_repacking = True
+        layer.output_partition_sizes = output_partition_sizes
+
+    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        if (not hasattr(layer, "needs_repacking")
+                or not layer.needs_repacking):
+            return
+
+        # vLLM occasionally fuses a few parameters into a single tensor, and
+        # as such, we need to potentially re-pack the tensor.
+        if len(layer.output_partition_sizes) == 1:
+            return
 
     def apply(
         self,
