@@ -13,6 +13,10 @@ from vllm.model_executor.layers.quantization.base_config import (
 import flute
 import flute.integrations
 
+# Hack
+flute.TEMPLATE_TUNED_WITHOUT_M_CONFIGS[(108, 4, 128, 28672, 4096)] = (
+    flute.TEMPLATE_TUNED_WITHOUT_M_CONFIGS[(108, 4, 128, 28672, 8192)])
+
 
 class FluteConfig(QuantizationConfig):
     """Config class for FLUTE Quantization."""
@@ -199,6 +203,59 @@ class FluteLinearMethod(LinearMethodBase):
         # as such, we need to potentially re-pack the tensor.
         if len(layer.output_partition_sizes) == 1:
             return
+
+        # split the combined tensors into individual tensors
+        # weight: [P, K]
+        # scales: [N, G]
+        Ns = layer.output_partition_sizes
+        Ps = [int(N / 16 * layer.num_bits) for N in Ns]
+        Qs = torch.split(layer.weight, Ps, dim=0)
+        Ss = torch.split(layer.scales, Ns, dim=0)
+
+        Qs_unpacked = []
+        for Q, S in zip(Qs, Ss):
+            # hack: we reconstruct the unpacked data using the fact that
+            # `W.T = I @ W.T` and thus using the `qgemm` routine
+            _X = torch.eye(
+                Q.shape[1],
+                dtype=S.dtype,
+                device=S.device)
+            # the scales needs to be just ones
+            _S = torch.ones_like(S)
+            # the tables need to return the original values
+            _T = torch.arange(
+                2 ** layer.num_bits,
+                dtype=S.dtype,
+                device=S.device)
+            _T2 = flute.utils.make_qmap2_from_qmap(_T)
+
+            # unpack
+            _Q = flute.qgemm_simple(
+                _X,
+                Q,
+                _S,
+                _T,
+                _T2,
+                layer.workspace,
+                layer.num_bits,
+                layer.group_size)
+            Qs_unpacked.append(_Q.T)
+
+        # re-pack the tensors
+        Q_unpacked = torch.cat(Qs_unpacked, dim=0)
+        template_id = flute.TEMPLATE_TUNED_WITHOUT_M_CONFIGS[(
+            flute.NUM_SMS,
+            layer.num_bits,
+            layer.group_size,
+            Q_unpacked.shape[0],   # N
+            Q_unpacked.shape[1])]  # K
+        Q_repacked = flute.utils.pack(
+            Q_unpacked.T.contiguous(),
+            num_bits=layer.num_bits,
+            template_ids=[template_id])
+        layer.weight = Parameter(
+            Q_repacked,
+            requires_grad=False)
 
     def apply(
         self,
